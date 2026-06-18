@@ -1,0 +1,99 @@
+# =============================================================================
+# SAM3 LoRA — Training Configuration
+#
+# Usage:
+#   python train.py --config configs/lora_config.yaml
+#
+# Adapt to your dataset by changing:
+#   training.data_dir      → root directory containing train/ and val/ splits
+#   training.num_epochs    → number of training epochs
+#   training.batch_size    → per-GPU batch size
+#   training.learning_rate → starting LR (5e-5 is a good default)
+#   output.output_dir      → where to save weights and logs
+#
+# Dataset layout expected:
+#   <data_dir>/
+#     train/
+#       _annotations.coco.json
+#       images/
+#         *.jpg / *.png
+#     val/   (optional — skip for train-only)
+#       _annotations.coco.json
+#       images/
+# =============================================================================
+
+# ---------------------------------------------------------------------------
+# LoRA
+# ---------------------------------------------------------------------------
+lora:
+  rank: 16              # Low-rank dimension (8–32 typical)
+  alpha: 32             # Scaling factor (usually 2× rank)
+  dropout: 0.1          # LoRA dropout
+
+  # Which linear layers to adapt (match by module name suffix)
+  target_modules: [q_proj, k_proj, v_proj, out_proj, fc1, fc2]
+
+  # Which SAM3 components to apply LoRA to.
+  # Disabling components reduces trainable parameters but limits adaptation.
+  apply_to_vision_encoder:   true
+  apply_to_text_encoder:     true
+  apply_to_geometry_encoder: false   # rarely needed; disable to save params
+  apply_to_detr_encoder:     true
+  apply_to_detr_decoder:     true
+  apply_to_mask_decoder:     false   # enable for mask-heavy fine-tuning
+
+# ---------------------------------------------------------------------------
+# Training
+# ---------------------------------------------------------------------------
+training:
+  data_dir: ./data           # root with train/ and val/ sub-directories
+
+  batch_size: 4              # per-GPU; effective = batch_size × grad_accum × n_gpus
+  num_epochs: 30
+  learning_rate: 5.0e-5
+  weight_decay: 1.0e-4
+
+  # Gradient accumulation: simulate larger batch without extra memory
+  gradient_accumulation_steps: 1
+  max_grad_norm: 1.0
+
+  # Max objects per (image, category) sample; prevents Triton int32 overflow
+  # on very dense annotation files (e.g. aerial / remote-sensing datasets).
+  # Reduce if you hit CUDA OOM during the focal-loss computation.
+  max_anns_per_image: 50
+
+  # Adam hyper-parameters
+  adam_beta1: 0.9
+  adam_beta2: 0.999
+  adam_epsilon: 1.0e-8
+
+  num_workers: 4
+
+  # Early stopping: halt if val IoU does not improve for this many epochs.
+  # Set to a large value (e.g. 999) to disable.
+  early_stopping_patience: 5
+
+# ---------------------------------------------------------------------------
+# Image / mask resolution
+# ---------------------------------------------------------------------------
+image_resolution: 1008    # SAM3 native input resolution
+# mask_resolution is fixed at 288 (SAM3 decoder output) — do not change
+
+# ---------------------------------------------------------------------------
+# Validation metrics (used during training IoU eval)
+# ---------------------------------------------------------------------------
+metrics:
+  score_threshold: 0.15   # minimum confidence to count a prediction
+  nms_iou_threshold: 0.4  # for post-training validate.py NMS
+  match_iou_threshold: 0.5
+
+# ---------------------------------------------------------------------------
+# Output
+# ---------------------------------------------------------------------------
+output:
+  output_dir: outputs/sam3_lora
+  # Saved files:
+  #   best_lora_weights.pt   — best val IoU checkpoint
+  #   last_lora_weights.pt   — final epoch checkpoint
+  #   training_log.jsonl     — per-epoch metrics
+  #   training_results.json  — final summary
