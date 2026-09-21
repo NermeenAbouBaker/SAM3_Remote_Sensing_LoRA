@@ -235,6 +235,7 @@ If you use this work, please cite:
   year      = {2026},
   address   = {Padua, Italy},
   publisher = {Springer},
+  url       = {https://link.springer.com/chapter/10.1007/978-3-032-38401-0_28},
 }
 ```
 
