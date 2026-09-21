@@ -230,7 +230,7 @@ If you use this work, please cite:
 ```bibtex
 @inproceedings{sam3lora_icann2026,
   title     = {Parameter Efficient Adaptation of SAM3 for Remote Sensing Segmentation Beyond Single Domain Prompting},
-  author    = {Nermeen Abou Baker and Uwe Handmann},
+  author    = {Nermeen Abou Baker},
   booktitle = {Proceedings of the 35th International Conference on Artificial Neural Networks (ICANN)},
   year      = {2026},
   address   = {Padua, Italy},
